@@ -271,7 +271,7 @@ handler *get_new_handler(TABLE_SHARE *share, MEM_ROOT *alloc,
   DBUG_ENTER("get_new_handler");
   DBUG_PRINT("enter", ("alloc: %p", alloc));
 
-  if (db_type && db_type->state == SHOW_OPTION_YES && db_type->create)
+  if (db_type && db_type->create && ha_storage_engine_is_enabled(db_type))
   {
     if ((file= db_type->create(db_type, share, alloc)))
       file->init();
@@ -456,15 +456,9 @@ int ha_finalize_handlerton(st_plugin_int *plugin)
   if (!hton)
     goto end;
 
-  switch (hton->state) {
-  case SHOW_OPTION_NO:
-  case SHOW_OPTION_DISABLED:
-    break;
-  case SHOW_OPTION_YES:
-    if (installed_htons[hton->db_type] == hton)
-      installed_htons[hton->db_type]= NULL;
-    break;
-  };
+  if (ha_storage_engine_is_enabled(hton) &&
+      installed_htons[hton->db_type] == hton)
+    installed_htons[hton->db_type]= NULL;
 
   if (hton->panic)
     hton->panic(hton, HA_PANIC_CLOSE);
@@ -505,6 +499,16 @@ int ha_finalize_handlerton(st_plugin_int *plugin)
   DBUG_RETURN(0);
 }
 
+bool ha_storage_engine_is_enabled(const handlerton *db_type)
+{
+  if (ha_legacy_type(db_type) == DB_TYPE_BINLOG)
+    return WSREP_ON || opt_bin_log;
+
+  if (!(db_type && db_type->create))
+    return FALSE;
+
+  return TRUE;
+}
 
 int ha_initialize_handlerton(st_plugin_int *plugin)
 {
@@ -531,7 +535,7 @@ int ha_initialize_handlerton(st_plugin_int *plugin)
   if (plugin->plugin->init && plugin->plugin->init(hton))
   {
     sql_print_error("Plugin '%s' init function returned error.",
-		    plugin->name.str);
+                    plugin->name.str);
     goto err;
   }
 
@@ -550,90 +554,81 @@ int ha_initialize_handlerton(st_plugin_int *plugin)
       hton->discover_table_existence= full_discover_for_existence;
   }
 
-  switch (hton->state) {
-  case SHOW_OPTION_NO:
-    break;
-  case SHOW_OPTION_YES:
+  if (ha_storage_engine_is_enabled(hton))
+  {
+    uint tmp;
+    ulong fslot;
+
+    DBUG_EXECUTE_IF("unstable_db_type", {
+                      static int i= (int) DB_TYPE_FIRST_DYNAMIC;
+                      hton->db_type= (enum legacy_db_type)++i;
+                    });
+
+    /* now check the db_type for conflict */
+    if (hton->db_type <= DB_TYPE_UNKNOWN ||
+        hton->db_type >= DB_TYPE_DEFAULT ||
+        installed_htons[hton->db_type])
     {
-      uint tmp;
-      ulong fslot;
+      int idx= (int) DB_TYPE_FIRST_DYNAMIC;
 
-      DBUG_EXECUTE_IF("unstable_db_type", {
-                        static int i= (int) DB_TYPE_FIRST_DYNAMIC;
-                        hton->db_type= (enum legacy_db_type)++i;
-                      });
+      while (idx < (int) DB_TYPE_DEFAULT && installed_htons[idx])
+        idx++;
 
-      /* now check the db_type for conflict */
-      if (hton->db_type <= DB_TYPE_UNKNOWN ||
-          hton->db_type >= DB_TYPE_DEFAULT ||
-          installed_htons[hton->db_type])
+      if (idx == (int) DB_TYPE_DEFAULT)
       {
-        int idx= (int) DB_TYPE_FIRST_DYNAMIC;
-
-        while (idx < (int) DB_TYPE_DEFAULT && installed_htons[idx])
-          idx++;
-
-        if (idx == (int) DB_TYPE_DEFAULT)
-        {
-          sql_print_warning("Too many storage engines!");
-	  goto err_deinit;
-        }
-        if (hton->db_type != DB_TYPE_UNKNOWN)
-          sql_print_warning("Storage engine '%s' has conflicting typecode. "
-                            "Assigning value %d.", plugin->plugin->name, idx);
-        hton->db_type= (enum legacy_db_type) idx;
+        sql_print_warning("Too many storage engines!");
+        goto err_deinit;
       }
-
-      /*
-        In case a plugin is uninstalled and re-installed later, it should
-        reuse an array slot. Otherwise the number of uninstall/install
-        cycles would be limited. So look for a free slot.
-      */
-      DBUG_PRINT("plugin", ("total_ha: %lu", total_ha));
-      for (fslot= 0; fslot < total_ha; fslot++)
-      {
-        if (!hton2plugin[fslot])
-          break;
-      }
-      if (fslot < total_ha)
-        hton->slot= fslot;
-      else
-      {
-        if (total_ha >= MAX_HA)
-        {
-          sql_print_error("Too many plugins loaded. Limit is %lu. "
-                          "Failed on '%s'", (ulong) MAX_HA, plugin->name.str);
-          goto err_deinit;
-        }
-        hton->slot= total_ha++;
-      }
-      installed_htons[hton->db_type]= hton;
-      tmp= hton->savepoint_offset;
-      hton->savepoint_offset= savepoint_alloc_size;
-      savepoint_alloc_size+= tmp;
-      hton2plugin[hton->slot]=plugin;
-      if (hton->prepare)
-      {
-        total_ha_2pc++;
-        if (tc_log && tc_log != get_tc_log_implementation())
-        {
-          total_ha_2pc--;
-          hton->prepare= 0;
-          push_warning_printf(current_thd, Sql_condition::WARN_LEVEL_WARN,
-                              ER_UNKNOWN_ERROR,
-                              "Cannot enable tc-log at run-time. "
-                              "XA features of %s are disabled",
-                              plugin->name.str);
-        }
-      }
-      break;
+      if (hton->db_type != DB_TYPE_UNKNOWN)
+        sql_print_warning("Storage engine '%s' has conflicting typecode. "
+                          "Assigning value %d.", plugin->plugin->name, idx);
+      hton->db_type= (enum legacy_db_type) idx;
     }
-    /* fall through */
-  default:
-    hton->state= SHOW_OPTION_DISABLED;
-    break;
+
+    /*
+      In case a plugin is uninstalled and re-installed later, it should
+      reuse an array slot. Otherwise the number of uninstall/install
+      cycles would be limited. So look for a free slot.
+    */
+    DBUG_PRINT("plugin", ("total_ha: %lu", total_ha));
+    for (fslot= 0; fslot < total_ha; fslot++)
+    {
+      if (!hton2plugin[fslot])
+        break;
+    }
+    if (fslot < total_ha)
+      hton->slot= fslot;
+    else
+    {
+      if (total_ha >= MAX_HA)
+      {
+        sql_print_error("Too many plugins loaded. Limit is %lu. "
+                        "Failed on '%s'", (ulong) MAX_HA, plugin->name.str);
+        goto err_deinit;
+      }
+      hton->slot= total_ha++;
+    }
+    installed_htons[hton->db_type]= hton;
+    tmp= hton->savepoint_offset;
+    hton->savepoint_offset= savepoint_alloc_size;
+    savepoint_alloc_size+= tmp;
+    hton2plugin[hton->slot]=plugin;
+    if (hton->prepare)
+    {
+      total_ha_2pc++;
+      if (tc_log && tc_log != get_tc_log_implementation())
+      {
+        total_ha_2pc--;
+        hton->prepare= 0;
+        push_warning_printf(current_thd, Sql_condition::WARN_LEVEL_WARN,
+                            ER_UNKNOWN_ERROR,
+                            "Cannot enable tc-log at run-time. "
+                            "XA features of %s are disabled",
+                            plugin->name.str);
+      }
+    }
   }
-  
+
   /* 
     This is entirely for legacy. We will create a new "disk based" hton and a 
     "memory" hton which will be configurable longterm. We should be able to 
@@ -668,10 +663,10 @@ err_deinit:
   */
   if (plugin->plugin->deinit)
     (void) plugin->plugin->deinit(NULL);
-          
+
 err:
 #ifdef DBUG_ASSERT_EXISTS
-  if (hton->prepare && hton->state == SHOW_OPTION_YES)
+  if (hton->prepare && ha_storage_engine_is_enabled(hton))
     failed_ha_2pc++;
 #endif
   my_free(hton);
@@ -716,7 +711,7 @@ static my_bool dropdb_handlerton(THD *unused1, plugin_ref plugin,
                                  void *path)
 {
   handlerton *hton= plugin_hton(plugin);
-  if (hton->state == SHOW_OPTION_YES && hton->drop_database)
+  if (ha_storage_engine_is_enabled(hton) && hton->drop_database)
     hton->drop_database(hton, (char *)path);
   return FALSE;
 }
@@ -732,7 +727,7 @@ static my_bool checkpoint_state_handlerton(THD *unused1, plugin_ref plugin,
                                            void *disable)
 {
   handlerton *hton= plugin_hton(plugin);
-  if (hton->state == SHOW_OPTION_YES && hton->checkpoint_state)
+  if (ha_storage_engine_is_enabled(hton) && hton->checkpoint_state)
     hton->checkpoint_state(hton, (int) *(bool*) disable);
   return FALSE;
 }
@@ -754,7 +749,7 @@ static my_bool commit_checkpoint_request_handlerton(THD *unused1, plugin_ref plu
 {
   st_commit_checkpoint_request *st= (st_commit_checkpoint_request *)data;
   handlerton *hton= plugin_hton(plugin);
-  if (hton->state == SHOW_OPTION_YES && hton->commit_checkpoint_request)
+  if (ha_storage_engine_is_enabled(hton) && hton->commit_checkpoint_request)
   {
     void *cookie= st->cookie;
     if (st->pre_hook)
@@ -790,7 +785,7 @@ static my_bool closecon_handlerton(THD *thd, plugin_ref plugin,
     there's no need to rollback here as all transactions must
     be rolled back already
   */
-  if (hton->state == SHOW_OPTION_YES && thd_get_ha_data(thd, hton))
+  if (ha_storage_engine_is_enabled(hton) && thd_get_ha_data(thd, hton))
   {
     if (hton->close_connection)
       hton->close_connection(hton, thd);
@@ -816,7 +811,7 @@ static my_bool kill_handlerton(THD *thd, plugin_ref plugin,
 {
   handlerton *hton= plugin_hton(plugin);
 
-  if (hton->state == SHOW_OPTION_YES && hton->kill_query &&
+  if (ha_storage_engine_is_enabled(hton) && hton->kill_query &&
       thd_get_ha_data(thd, hton))
     hton->kill_query(hton, thd, *(enum thd_kill_levels *) level);
   return FALSE;
@@ -838,7 +833,7 @@ static my_bool plugin_prepare_for_backup(THD *unused1, plugin_ref plugin,
                                          void *not_used)
 {
   handlerton *hton= plugin_hton(plugin);
-  if (hton->state == SHOW_OPTION_YES && hton->prepare_for_backup)
+  if (ha_storage_engine_is_enabled(hton) && hton->prepare_for_backup)
     hton->prepare_for_backup();
   return FALSE;
 }
@@ -854,7 +849,7 @@ static my_bool plugin_end_backup(THD *unused1, plugin_ref plugin,
                                  void *not_used)
 {
   handlerton *hton= plugin_hton(plugin);
-  if (hton->state == SHOW_OPTION_YES && hton->end_backup)
+  if (ha_storage_engine_is_enabled(hton) && hton->end_backup)
     hton->end_backup();
   return FALSE;
 }
@@ -1932,7 +1927,7 @@ static my_bool xacommit_handlerton(THD *unused1, plugin_ref plugin,
                                    void *arg)
 {
   handlerton *hton= plugin_hton(plugin);
-  if (hton->state == SHOW_OPTION_YES && hton->recover)
+  if (ha_storage_engine_is_enabled(hton) && hton->recover)
   {
     hton->commit_by_xid(hton, ((struct xahton_st *)arg)->xid);
     ((struct xahton_st *)arg)->result= 0;
@@ -1944,7 +1939,7 @@ static my_bool xarollback_handlerton(THD *unused1, plugin_ref plugin,
                                      void *arg)
 {
   handlerton *hton= plugin_hton(plugin);
-  if (hton->state == SHOW_OPTION_YES && hton->recover)
+  if (ha_storage_engine_is_enabled(hton) && hton->recover)
   {
     hton->rollback_by_xid(hton, ((struct xahton_st *)arg)->xid);
     ((struct xahton_st *)arg)->result= 0;
@@ -2075,7 +2070,7 @@ static my_bool xarecover_handlerton(THD *unused, plugin_ref plugin,
   struct xarecover_st *info= (struct xarecover_st *) arg;
   int got;
 
-  if (hton->state == SHOW_OPTION_YES && hton->recover)
+  if (ha_storage_engine_is_enabled(hton) && hton->recover)
   {
     while ((got= hton->recover(hton, info->list, info->len)) > 0 )
     {
@@ -2420,8 +2415,7 @@ static my_bool snapshot_handlerton(THD *thd, plugin_ref plugin,
                                    void *arg)
 {
   handlerton *hton= plugin_hton(plugin);
-  if (hton->state == SHOW_OPTION_YES &&
-      hton->start_consistent_snapshot)
+  if (ha_storage_engine_is_enabled(hton) && hton->start_consistent_snapshot)
   {
     if (hton->start_consistent_snapshot(hton, thd))
       return TRUE;
@@ -2467,7 +2461,7 @@ static my_bool flush_handlerton(THD *thd, plugin_ref plugin,
                                 void *arg)
 {
   handlerton *hton= plugin_hton(plugin);
-  if (hton->state == SHOW_OPTION_YES && hton->flush_logs && 
+  if (ha_storage_engine_is_enabled(hton) && hton->flush_logs &&
       hton->flush_logs(hton))
     return TRUE;
   return FALSE;
@@ -2484,7 +2478,7 @@ bool ha_flush_logs(handlerton *db_type)
   }
   else
   {
-    if (db_type->state != SHOW_OPTION_YES ||
+    if (ha_storage_engine_is_enabled(db_type) ||
         (db_type->flush_logs && db_type->flush_logs(db_type)))
       return TRUE;
   }
@@ -5221,7 +5215,7 @@ static my_bool discover_handlerton(THD *thd, plugin_ref plugin,
 {
   TABLE_SHARE *share= (TABLE_SHARE *)arg;
   handlerton *hton= plugin_hton(plugin);
-  if (hton->state == SHOW_OPTION_YES && hton->discover_table)
+  if (ha_storage_engine_is_enabled(hton) && hton->discover_table)
   {
     share->db_plugin= plugin;
     int error= hton->discover_table(hton, thd, share);
@@ -5297,7 +5291,7 @@ static my_bool discover_existence(THD *thd, plugin_ref plugin,
 {
   st_discover_existence_args *args= (st_discover_existence_args*)arg;
   handlerton *ht= plugin_hton(plugin);
-  if (ht->state != SHOW_OPTION_YES || !ht->discover_table_existence)
+  if (!ha_storage_engine_is_enabled(ht) || !ht->discover_table_existence)
     return args->frm_exists;
 
   args->hton= ht;
@@ -5587,7 +5581,7 @@ static my_bool discover_names(THD *thd, plugin_ref plugin,
   st_discover_names_args *args= (st_discover_names_args *)arg;
   handlerton *ht= plugin_hton(plugin);
 
-  if (ht->state == SHOW_OPTION_YES && ht->discover_table_names)
+  if (ha_storage_engine_is_enabled(ht) && ht->discover_table_names)
   {
     size_t old_elements= args->result->tables->elements();
     if (ht->discover_table_names(ht, args->db, args->dirp, args->result))
@@ -5986,7 +5980,7 @@ static my_bool showstat_handlerton(THD *thd, plugin_ref plugin,
 {
   enum ha_stat_type stat= *(enum ha_stat_type *) arg;
   handlerton *hton= plugin_hton(plugin);
-  if (hton->state == SHOW_OPTION_YES && hton->show_status &&
+  if (ha_storage_engine_is_enabled(hton) && hton->show_status &&
       hton->show_status(hton, thd, stat_print, stat))
     return TRUE;
   return FALSE;
@@ -6018,7 +6012,7 @@ bool ha_show_status(THD *thd, handlerton *db_type, enum ha_stat_type stat)
   }
   else
   {
-    if (db_type->state != SHOW_OPTION_YES)
+    if (!ha_storage_engine_is_enabled(db_type))
     {
       const LEX_CSTRING *name= hton_name(db_type);
       result= stat_print(thd, name->str, name->length,

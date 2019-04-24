@@ -1239,11 +1239,6 @@ typedef struct st_order ORDER;
 struct handlerton
 {
   /*
-    Historical marker for if the engine is available of not
-  */
-  SHOW_COMP_OPTION state;
-
-  /*
     Historical number used for frm file to determine the correct
     storage engine.  This is going away and new engines will just use
     "name" for this.
@@ -4856,12 +4851,6 @@ static inline bool ha_check_storage_engine_flag(const handlerton *db_type, uint3
   return db_type == NULL ? FALSE : MY_TEST(db_type->flags & flag);
 }
 
-static inline bool ha_storage_engine_is_enabled(const handlerton *db_type)
-{
-  return (db_type && db_type->create) ?
-         (db_type->state == SHOW_OPTION_YES) : FALSE;
-}
-
 #define view_pseudo_hton ((handlerton *)1)
 
 /* basic stuff */
@@ -4886,6 +4875,7 @@ int ha_delete_table(THD *thd, handlerton *db_type, const char *path,
                     const LEX_CSTRING *db, const LEX_CSTRING *alias, bool generate_warning);
 void ha_prepare_for_backup();
 void ha_end_backup();
+bool ha_storage_engine_is_enabled(const handlerton *db_type);
 
 /* statistics and info */
 bool ha_show_status(THD *thd, handlerton *db_type, enum ha_stat_type stat);
