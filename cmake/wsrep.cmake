@@ -40,4 +40,21 @@ SET(WSREP_PROC_INFO ${WITH_WSREP})
 
 IF(WITH_WSREP)
   SET(WSREP_PATCH_VERSION "wsrep_${WSREP_VERSION}")
+
+  IF(INSTALL_LAYOUT STREQUAL "STANDALONE")
+    FIND_PROGRAM(GARBD_EXECUTABLE garbd)
+    FIND_FILE(LIBGALERA_LIBRARY libgalera_smm.so)
+    IF(GARBD_EXECUTABLE AND LIBGALERA_LIBRARY)
+      SET(CPACK_SET_DESTDIR ON)
+      INSTALL(CODE "EXECUTE_PROCESS(
+                     COMMAND cp -v '${GARBD_EXECUTABLE}' usr/bin/
+                     WORKING_DIRECTORY \$ENV{DESTDIR})
+                    EXECUTE_PROCESS(
+                      COMMAND cp -v '${LIBGALERA_LIBRARY}' usr/lib/
+                     WORKING_DIRECTORY \$ENV{DESTDIR})"
+                     COMPONENT Server)
+    ELSE()
+      INSTALL(CODE "MESSAGE(WARNING \"Cannot package garbd and libgalera_smm.so in a binary tarball!\")")
+    ENDIF()
+  ENDIF()
 ENDIF()
