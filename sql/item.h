@@ -1068,7 +1068,7 @@ public:
     return real_type_handler()->cast_to_int_type_handler();
   }
   /* result_type() of an item specifies how the value should be returned */
-  Item_result result_type() const
+  virtual Item_result result_type() const
   {
     return type_handler()->result_type();
   }
@@ -6921,6 +6921,7 @@ public:
     return true;
   }
 
+  Item_result result_type() const { return ROW_RESULT; }
   uint cols() const { return item_count; }
   Item *element_index(uint i) { return values[i]; }
   Item **addr(uint i) { return (Item **) (values + i); }
