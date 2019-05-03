@@ -5822,6 +5822,13 @@ Item *Item_field::propagate_equal_fields(THD *thd,
   return item;
 }
 
+Item *Item_field::propagate_equal_fields_helper(THD *thd,
+                                         COND_EQUAL *arg)
+{
+  return propagate_equal_fields(thd,Context(ANY_SUBST,
+                                result_type(),
+                                collation.collation), arg);
+}
 
 /**
   Replace an Item_field for an equal Item_field that evaluated earlier

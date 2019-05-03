@@ -3266,3 +3266,100 @@ NULLIF(GROUP_CONCAT(v1), null)
 C
 B
 DROP TABLE t1;
+#
+# MDEV-13275:Query optimizer not picking optimal ORDER BY PRIMARY in case of INNER JOIN on PRIMARY
+# like it does for similar WHERE condition
+#
+create table t1 (id char(32) NOT NULL primary key);
+insert into t1 values (0), (1), (2), (3), (4), (5), (6), (7), (8), (9);
+create table t2 (id char(32) NOT NULL primary key);
+insert into t2 values (0), (1), (2), (3);
+explain select t1.id from t1 INNER JOIN t2 on t1.id=t2.id order by t1.id;
+id	select_type	table	type	possible_keys	key	key_len	ref	rows	Extra
+1	SIMPLE	t2	index	PRIMARY	PRIMARY	32	NULL	4	Using index
+1	SIMPLE	t1	eq_ref	PRIMARY	PRIMARY	32	test.t2.id	1	Using index
+analyze format=json select t1.id from t1 INNER JOIN t2 on t1.id=t2.id order by t1.id;
+ANALYZE
+{
+  "query_block": {
+    "select_id": 1,
+    "r_loops": 1,
+    "r_total_time_ms": "REPLACED",
+    "table": {
+      "table_name": "t2",
+      "access_type": "index",
+      "possible_keys": ["PRIMARY"],
+      "key": "PRIMARY",
+      "key_length": "32",
+      "used_key_parts": ["id"],
+      "r_loops": 1,
+      "rows": 4,
+      "r_rows": 4,
+      "r_total_time_ms": "REPLACED",
+      "filtered": 100,
+      "r_filtered": 100,
+      "using_index": true
+    },
+    "table": {
+      "table_name": "t1",
+      "access_type": "eq_ref",
+      "possible_keys": ["PRIMARY"],
+      "key": "PRIMARY",
+      "key_length": "32",
+      "used_key_parts": ["id"],
+      "ref": ["test.t2.id"],
+      "r_loops": 4,
+      "rows": 1,
+      "r_rows": 1,
+      "r_total_time_ms": "REPLACED",
+      "filtered": 100,
+      "r_filtered": 100,
+      "using_index": true
+    }
+  }
+}
+explain select t1.id from t1 INNER JOIN t2 on t1.id=t2.id order by t2.id;
+id	select_type	table	type	possible_keys	key	key_len	ref	rows	Extra
+1	SIMPLE	t2	index	PRIMARY	PRIMARY	32	NULL	4	Using index
+1	SIMPLE	t1	eq_ref	PRIMARY	PRIMARY	32	test.t2.id	1	Using index
+analyze format=json select t1.id from t1 INNER JOIN t2 on t1.id=t2.id order by t2.id;
+ANALYZE
+{
+  "query_block": {
+    "select_id": 1,
+    "r_loops": 1,
+    "r_total_time_ms": "REPLACED",
+    "table": {
+      "table_name": "t2",
+      "access_type": "index",
+      "possible_keys": ["PRIMARY"],
+      "key": "PRIMARY",
+      "key_length": "32",
+      "used_key_parts": ["id"],
+      "r_loops": 1,
+      "rows": 4,
+      "r_rows": 4,
+      "r_total_time_ms": "REPLACED",
+      "filtered": 100,
+      "r_filtered": 100,
+      "using_index": true
+    },
+    "table": {
+      "table_name": "t1",
+      "access_type": "eq_ref",
+      "possible_keys": ["PRIMARY"],
+      "key": "PRIMARY",
+      "key_length": "32",
+      "used_key_parts": ["id"],
+      "ref": ["test.t2.id"],
+      "r_loops": 4,
+      "rows": 1,
+      "r_rows": 1,
+      "r_total_time_ms": "REPLACED",
+      "filtered": 100,
+      "r_filtered": 100,
+      "using_index": true
+    }
+  }
+}
+drop table t1,t2;

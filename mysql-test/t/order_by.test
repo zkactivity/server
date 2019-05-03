@@ -2201,3 +2201,23 @@ GROUP BY id
 ORDER BY id+1 DESC;
 
 DROP TABLE t1;
+
+--echo #
+--echo # MDEV-13275:Query optimizer not picking optimal ORDER BY PRIMARY in case of INNER JOIN on PRIMARY
+--echo # like it does for similar WHERE condition
+--echo #
+
+create table t1 (id char(32) NOT NULL primary key);
+insert into t1 values (0), (1), (2), (3), (4), (5), (6), (7), (8), (9);
+create table t2 (id char(32) NOT NULL primary key);
+insert into t2 values (0), (1), (2), (3);
+
+explain select t1.id from t1 INNER JOIN t2 on t1.id=t2.id order by t1.id;
+--source include/analyze-format.inc
+analyze format=json select t1.id from t1 INNER JOIN t2 on t1.id=t2.id order by t1.id;
+
+explain select t1.id from t1 INNER JOIN t2 on t1.id=t2.id order by t2.id;
+--source include/analyze-format.inc
+analyze format=json select t1.id from t1 INNER JOIN t2 on t1.id=t2.id order by t2.id;
+
+drop table t1,t2;

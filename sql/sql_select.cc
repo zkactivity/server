@@ -12682,20 +12682,28 @@ remove_const(JOIN *join,ORDER *first_order, COND *cond,
             table_map first_table_bit=
               join->join_tab[join->const_tables].table->map;
 
-            Item *item= order->item[0];
+            Item_field* item= (Item_field *)order->item[0]->real_item();
 
             /*
-              TODO: equality substitution in the context of ORDER BY is 
+              Equality substitution in the context of ORDER BY is
               sometimes allowed when it is not allowed in the general case.
               
+              An example of this would be when we are using a collation that
+              is case insensitive so 'a' and 'A' would be the same but HEX(a)
+              and HEX('A') are different, so we don't make this substitution in
+              general case but the sustitutions works well with comparision, so
+              if we have 'a' < 'das' then we can substitute this with
+              'A' < 'das'.
+              For equality propagation the fields after substituion would be
+              used for comparision so we can do these substitutions in the
+              order by clause.
+
               We make the below call for its side effect: it will locate the
               multiple equality the item belongs to and set item->item_equal
               accordingly.
             */
-            Item *res= item->propagate_equal_fields(join->thd,
-                                                    Value_source::
-                                                    Context_identity(),
-                                                    join->cond_equal);
+            Item *res= item->propagate_equal_fields_helper(join->thd,
+                                                           join->cond_equal);
             Item_equal *item_eq;
             if ((item_eq= res->get_item_equal()))
             {
