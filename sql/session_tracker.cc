@@ -373,7 +373,7 @@ bool Session_sysvars_tracker::vars_list::insert(sysvar_node_st *node,
                                  in case of invalid/duplicate values.
   @param char_set	 [IN]	 charecter set information used for string
 				 manipulations.
-  @param take_mutex      [IN]    take LOCK_plugin
+  @param take_mutex      [IN]    apply rdlock to LOCK_plugin
 
   @return
     true                    Error
@@ -414,7 +414,7 @@ bool Session_sysvars_tracker::vars_list::parse_var_list(THD *thd,
     overhead.
   */
   if (!thd || take_mutex)
-    mysql_mutex_lock(&LOCK_plugin);
+    mysql_rwlock_rdlock(&LOCK_plugin);
   for (;;)
   {
     sys_var *svar;
@@ -461,13 +461,13 @@ bool Session_sysvars_tracker::vars_list::parse_var_list(THD *thd,
       break;
   }
   if (!thd || take_mutex)
-    mysql_mutex_unlock(&LOCK_plugin);
+    mysql_rwlock_unlock(&LOCK_plugin);
 
   return false;
 
 error:
   if (!thd || take_mutex)
-    mysql_mutex_unlock(&LOCK_plugin);
+    mysql_rwlock_unlock(&LOCK_plugin);
   return true;
 }
 
@@ -497,7 +497,7 @@ bool Session_sysvars_tracker::check_var_list(THD *thd,
     overhead.
   */
   if (!thd || take_mutex)
-    mysql_mutex_lock(&LOCK_plugin);
+    mysql_rwlock_rdlock(&LOCK_plugin);
   for (;;)
   {
     LEX_STRING var;
@@ -530,7 +530,7 @@ bool Session_sysvars_tracker::check_var_list(THD *thd,
       else
       {
         if (!thd || take_mutex)
-          mysql_mutex_unlock(&LOCK_plugin);
+          mysql_rwlock_unlock(&LOCK_plugin);
         return true;
       }
     }
@@ -541,7 +541,7 @@ bool Session_sysvars_tracker::check_var_list(THD *thd,
       break;
   }
   if (!thd || take_mutex)
-    mysql_mutex_unlock(&LOCK_plugin);
+    mysql_rwlock_unlock(&LOCK_plugin);
 
   return false;
 }
@@ -613,7 +613,7 @@ bool Session_sysvars_tracker::vars_list::construct_var_list(char *buf,
 
   data.idx= 0;
 
-  mysql_mutex_lock(&LOCK_plugin);
+  mysql_rwlock_rdlock(&LOCK_plugin);
   my_hash_iterate(&m_registered_sysvars, &name_array_filler, &data);
   DBUG_ASSERT(data.idx <= m_registered_sysvars.records);
 
@@ -623,7 +623,7 @@ bool Session_sysvars_tracker::vars_list::construct_var_list(char *buf,
   */
   if (m_registered_sysvars.records == 0)
   {
-    mysql_mutex_unlock(&LOCK_plugin);
+    mysql_rwlock_unlock(&LOCK_plugin);
     buf[0]= '\0';
     return false;
   }
@@ -637,7 +637,7 @@ bool Session_sysvars_tracker::vars_list::construct_var_list(char *buf,
     size_t ln= nm->length + 1;
     if (ln > left)
     {
-      mysql_mutex_unlock(&LOCK_plugin);
+      mysql_rwlock_unlock(&LOCK_plugin);
       my_safe_afree(data.names, names_size);
       return true;
     }
@@ -646,7 +646,7 @@ bool Session_sysvars_tracker::vars_list::construct_var_list(char *buf,
     buf+= ln;
     left-= ln;
   }
-  mysql_mutex_unlock(&LOCK_plugin);
+  mysql_rwlock_unlock(&LOCK_plugin);
 
   buf--; buf[0]= '\0';
   my_safe_afree(data.names, names_size);
@@ -665,17 +665,17 @@ bool Session_sysvars_tracker::vars_list::construct_var_list(char *buf,
 
 bool Session_sysvars_tracker::enable(THD *thd)
 {
-  mysql_mutex_lock(&LOCK_plugin);
+  mysql_rwlock_rdlock(&LOCK_plugin);
   LEX_STRING tmp;
   tmp.str= global_system_variables.session_track_system_variables;
   tmp.length= safe_strlen(tmp.str);
   if (tool_list->parse_var_list(thd, tmp,
                                 true, thd->charset(), false) == true)
   {
-    mysql_mutex_unlock(&LOCK_plugin);
+    mysql_rwlock_unlock(&LOCK_plugin);
     return true;
   }
-  mysql_mutex_unlock(&LOCK_plugin);
+  mysql_rwlock_unlock(&LOCK_plugin);
   orig_list->copy(tool_list, thd);
   m_enabled= true;
 
@@ -756,16 +756,16 @@ my_bool Session_sysvars_tracker::store_variable(void *ptr, void *data_ptr)
     SHOW_VAR show;
     CHARSET_INFO *charset;
     size_t val_length, length;
-    mysql_mutex_lock(&LOCK_plugin);
+    mysql_rwlock_rdlock(&LOCK_plugin);
     if (!*node->test_load)
     {
-      mysql_mutex_unlock(&LOCK_plugin);
+      mysql_rwlock_unlock(&LOCK_plugin);
       return false;
     }
     sys_var *svar= node->m_svar;
     bool is_plugin= svar->cast_pluginvar();
     if (!is_plugin)
-      mysql_mutex_unlock(&LOCK_plugin);
+      mysql_rwlock_unlock(&LOCK_plugin);
 
     /* As its always system variable. */
     show.type= SHOW_SYS;
@@ -775,7 +775,7 @@ my_bool Session_sysvars_tracker::store_variable(void *ptr, void *data_ptr)
     const char *value= get_one_variable(thd, &show, OPT_SESSION, SHOW_SYS, NULL,
                                         &charset, val_buf, &val_length);
     if (is_plugin)
-      mysql_mutex_unlock(&LOCK_plugin);
+      mysql_rwlock_unlock(&LOCK_plugin);
 
     length= net_length_size(svar->name.length) +
       svar->name.length +

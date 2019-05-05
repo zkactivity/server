@@ -5215,7 +5215,7 @@ static int init_server_components()
 
   /*
     Since some wsrep threads (THDs) are create before plugins are
-    initialized, LOCK_plugin mutex needs to be initialized here.
+    initialized, LOCK_plugin rwlock needs to be initialized here.
   */
   plugin_mutex_init();
 
