@@ -4835,6 +4835,22 @@ evict_from_pool:
 	and block->lock. */
 	buf_wait_for_read(fix_block);
 
+	if (fix_block->page.id.is_corrupt_id()) {
+
+		fix_block->unfix();
+
+		if (err) {
+			*err = DB_PAGE_CORRUPTED;
+		}
+
+#ifdef UNIV_DEBUG
+	if (!fsp_is_system_temporary(page_id.space())) {
+		rw_lock_s_unlock(fix_block->debug_latch);
+	}
+#endif /* UNIV_DEBUG */
+		return NULL;
+	}
+
 	mtr_memo_type_t	fix_type;
 
 	switch (rw_latch) {
@@ -5788,7 +5804,6 @@ buf_mark_space_corrupt(buf_page_t* bpage, const fil_space_t* space)
 	buf_pool_mutex_enter(buf_pool);
 	mutex_enter(buf_page_get_mutex(bpage));
 	ut_ad(buf_page_get_io_fix(bpage) == BUF_IO_READ);
-	ut_ad(bpage->buf_fix_count == 0);
 	ut_ad(bpage->id.space() == space->id);
 
 	/* Set BUF_IO_NONE before we remove the block from LRU list */

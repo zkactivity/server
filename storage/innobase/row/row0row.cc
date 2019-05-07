@@ -1214,7 +1214,11 @@ row_search_on_row_ref(
 			& REC_INFO_MIN_REC_FLAG;
 	} else {
 		ut_a(ref->n_fields == index->n_uniq);
-		btr_pcur_open(index, ref, PAGE_CUR_LE, mode, pcur, mtr);
+
+		if (btr_pcur_open(index, ref, PAGE_CUR_LE, mode, pcur, mtr)
+		    != DB_SUCCESS) {
+			return FALSE;
+		}
 	}
 
 	low_match = btr_pcur_get_low_match(pcur);

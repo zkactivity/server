@@ -1,0 +1,26 @@
+call mtr.add_suppression("InnoDB: The page \\[page id: space=[0-9][0-9]*, page number=4\\] in file '.*test.t2\\.ibd' cannot be decrypted\\.");
+call mtr.add_suppression("InnoDB:  Error code: .* btr_pcur_open_low  level: 0 called from file: .*");
+SET GLOBAL innodb_encryption_threads = 4;
+CREATE TABLE t1 (pk INT PRIMARY KEY AUTO_INCREMENT, c VARCHAR(256)) ENGINE=INNODB ENCRYPTED=YES;
+select * into outfile "/home/thiru/mariarepo/10.4/bld/mysql-test/var/tmp/t1.outfile" from t1;
+select count(*) from t1;
+count(*)
+10
+CREATE TABLE t2 (pk INT, c CHAR(255)) ENGINE=INNODB ENCRYPTED=YES;
+insert into t2 values(999, "sql"), (2000, "server"), (100, "mariadb"),
+(101, "mariadb"), (102, "test1"), (103, "test2"), (104, "test3");
+insert into t2 select * from t2;
+insert into t2 select * from t2;
+insert into t2 select * from t2;
+insert into t2 select * from t2;
+insert into t2 select * from t2;
+insert into t2 select * from t2;
+select count(*) from t2;
+count(*)
+448
+# Corrupt the pages
+# restart
+load data infile '/home/thiru/mariarepo/10.4/bld/mysql-test/var/tmp/t1.outfile' into table t2;
+ERROR HY000: Got error 192 'Table encrypted but decryption failed. This could be because correct encryption management plugin is not loaded, used encryption key is not available or encryption method does not match.' from InnoDB
+drop table t1, t2;
+SET GLOBAL innodb_encryption_threads=default;

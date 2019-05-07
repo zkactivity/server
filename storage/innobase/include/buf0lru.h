@@ -207,7 +207,7 @@ Remove one page from LRU list and put it to free list */
 void
 buf_LRU_free_one_page(
 /*==================*/
-	buf_page_t*	bpage)	/*!< in/out: block, must contain a file page and
+	buf_page_t*	bpage) /*!< in/out: block, must contain a file page and
 				be in a state where it can be freed; there
 				may or may not be a hash index to the page */
 	MY_ATTRIBUTE((nonnull));

@@ -264,6 +264,26 @@ public:
 		ut_ad(page_no <= 0xFFFFFFFFU);
 	}
 
+	/** Set the space id
+	@param[in	space	space id */
+	inline void set_space(ulint space)
+	{
+		m_space = uint32_t(space);
+	}
+
+	/** Set the FIL_NULL for the space and page_no */
+	inline void set_corrupt_id()
+	{
+		m_space = m_page_no = FIL_NULL;
+	}
+
+	/** Check whether the corrupted page id
+	@return true if it is corrupted. */
+	inline bool is_corrupt_id()
+	{
+		return m_space == FIL_NULL && m_page_no == FIL_NULL;
+	}
+
 private:
 
 	/** Tablespace id. */
