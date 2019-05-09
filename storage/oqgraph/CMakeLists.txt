@@ -17,26 +17,7 @@ IF(NOT Judy_FOUND)
   RETURN()
 ENDIF()
 INCLUDE_DIRECTORIES(${Judy_INCLUDE_DIR})
-
-IF(MSVC)
-#  # lp:756966 OQGRAPH on Win64 does not compile
-#  IF (CMAKE_SIZEOF_VOID_P EQUAL 8)
-#    SET(OQGRAPH_OK 0 CACHE INTERNAL "")
-#  ELSE()
-    SET(OQGRAPH_OK 1 CACHE INTERNAL "")
-#  ENDIF()
-ELSE()
-# See if that works. On old gcc it'll fail because of -fno-rtti
-SET(CMAKE_REQUIRED_INCLUDES "${Boost_INCLUDE_DIRS}")
-CHECK_CXX_SOURCE_COMPILES(
-"
-#define BOOST_NO_RTTI 1
-#define BOOST_NO_TYPEID 1
-#include <boost/config.hpp>
-#include <boost/property_map/property_map.hpp>
-int main() { return 0; }
-" OQGRAPH_OK)
-ENDIF()
+SET(OQGRAPH_OK 1)
 ENDFUNCTION()
 
 IF(NOT DEFINED OQGRAPH_OK)
