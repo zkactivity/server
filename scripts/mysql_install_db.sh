@@ -437,7 +437,7 @@ then
 fi
 
 # Create database directories
-for dir in "$ldata" "$ldata/mysql"
+for dir in "$ldata"
 do
   if test ! -d "$dir"
   then
@@ -489,7 +489,7 @@ mysqld_install_cmd_line()
 
 cat_sql()
 {
-  echo "use mysql;"
+  echo "create database if not exists mysql;use mysql;"
 
   case "$auth_root_authentication_method" in
     normal)
