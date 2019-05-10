@@ -4572,7 +4572,7 @@ mysql_select(THD *thd,
   }
 
   /* Look for a table owned by an engine with the select_handler interface */
-  select_lex->select_h= select_lex->find_select_handler(thd);
+  select_lex->select_h= select_lex->find_select_handler(thd, NULL);
   if (select_lex->select_h)
   {
     /* Create a Pushdown_select object for later execution of the query */
@@ -28371,11 +28371,10 @@ Item *remove_pushed_top_conjuncts(THD *thd, Item *cond)
   @param thd   The thread handler
 
   @details
-    The function checks that this is an upper level select and if so looks
-    through its tables searching for one whose handlerton owns a
-    create_select call-back function. If the call of this function returns
-    a select_handler interface object then the server will push the select
-    query into this engine.
+    The function traverses through all tables involved searching for one 
+    whose handlerton owns a create_select call-back function. If the call
+    of this function returns a select_handler interface object then the 
+    server will push the whole select query into this engine.
     This is a responsibility of the create_select call-back function to
     check whether the engine can execute the query.
 
@@ -28383,20 +28382,30 @@ Item *remove_pushed_top_conjuncts(THD *thd, Item *cond)
           0  otherwise
 */
 
-select_handler *SELECT_LEX::find_select_handler(THD *thd)
+select_handler *SELECT_LEX::find_select_handler(THD *thd, SELECT_LEX *top_select)
 {
-  if (next_select())
-      return 0;
-  if (master_unit()->outer_select())
-    return 0;
+  select_handler *sh = NULL;
+
   for (TABLE_LIST *tbl= join->tables_list; tbl; tbl= tbl->next_local)
   {
     if (!tbl->table)
       continue;
+    if (tbl->derived)
+    {
+        SELECT_LEX *d_lex= tbl->derived->first_select();
+        while( d_lex )
+        {
+            sh= d_lex->find_select_handler(thd, (top_select) ? top_select : this);
+            d_lex= (tbl->derived->next_unit())
+              ? tbl->derived->next_unit()->first_select() : NULL;
+        }
+        if (sh)
+          return sh;
+    }
     handlerton *ht= tbl->table->file->partition_ht();
     if (!ht->create_select)
       continue;
-    select_handler *sh= ht->create_select(thd, this);
+    select_handler *sh= ht->create_select(thd, (top_select) ? top_select : this);
     return sh;
   }
   return 0;

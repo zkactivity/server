@@ -1514,7 +1514,7 @@ public:
                                        uchar *arg);
   Item *pushdown_from_having_into_where(THD *thd, Item *having);
 
-  select_handler *find_select_handler(THD *thd);
+  select_handler *find_select_handler(THD *thd, SELECT_LEX *top_select);
 
 private:
   bool m_non_agg_field_used;
