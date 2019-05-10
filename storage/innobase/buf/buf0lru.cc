@@ -2171,7 +2171,7 @@ Remove one page from LRU list and put it to free list */
 void
 buf_LRU_free_one_page(
 /*==================*/
-	buf_page_t*	bpage)	/*!< in/out: block, must contain a file page and
+	buf_page_t*	bpage)  /*!< in/out: block, must contain a file page and
 				be in a state where it can be freed; there
 				may or may not be a hash index to the page */
 {
@@ -2182,7 +2182,19 @@ buf_LRU_free_one_page(
 
 	ut_ad(buf_pool_mutex_own(buf_pool));
 
+	page_id_t old_page_id = bpage->id;
+
+	bpage->id.set_corrupt_id();
+
 	rw_lock_x_lock(hash_lock);
+
+	while (bpage->buf_fix_count > 0) {
+		/* Wait for other threads to release the fix count
+		before releasing the bpage from LRU list. */
+	}
+
+	bpage->id = old_page_id;
+
 	mutex_enter(block_mutex);
 
 	if (buf_LRU_block_remove_hashed(bpage, true)) {
