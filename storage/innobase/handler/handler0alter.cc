@@ -289,11 +289,15 @@ struct ha_innobase_inplace_ctx : public inplace_alter_handler_ctx
 	{
 		UT_DELETE(m_stage);
 		if (instant_table) {
+			ut_ad(!instant_table->id);
 			while (dict_index_t* index
 			       = UT_LIST_GET_LAST(instant_table->indexes)) {
 				UT_LIST_REMOVE(instant_table->indexes, index);
 				rw_lock_free(&index->lock);
 				dict_mem_index_free(index);
+			}
+			if (instant_table->fts) {
+				fts_free(instant_table);
 			}
 			dict_mem_table_free(instant_table);
 		}
