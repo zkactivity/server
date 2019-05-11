@@ -3376,10 +3376,12 @@ bool extend_table_list(THD *thd, TABLE_LIST *tables,
 {
   bool error= false;
   LEX *lex= thd->lex;
+  bool maybe_need_prelocking=
+    (tables->updating && tables->lock_type >= TL_WRITE_ALLOW_WRITE)
+    || thd->lex->default_used;
 
   if (thd->locked_tables_mode <= LTM_LOCK_TABLES &&
-      ! has_prelocking_list && tables->updating &&
-      (tables->lock_type >= TL_WRITE_ALLOW_WRITE || thd->lex->default_used))
+      ! has_prelocking_list && maybe_need_prelocking)
   {
     bool need_prelocking= FALSE;
     TABLE_LIST **save_query_tables_last= lex->query_tables_last;
@@ -3888,8 +3890,8 @@ lock_table_names(THD *thd, const DDL_options_st &options,
 
     if (create_table)
 #ifdef WITH_WSREP
-      if (thd->lex->sql_command != SQLCOM_CREATE_TABLE &&
-          thd->wsrep_exec_mode != REPL_RECV)
+      if (!(thd->lex->sql_command == SQLCOM_CREATE_TABLE &&
+	    thd->wsrep_exec_mode == REPL_RECV))
 #endif
       lock_wait_timeout= 0;                     // Don't wait for timeout
   }

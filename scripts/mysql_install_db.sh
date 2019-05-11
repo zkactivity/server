@@ -489,7 +489,8 @@ mysqld_install_cmd_line()
 
 cat_sql()
 {
-  echo "create database if not exists mysql;use mysql;"
+  echo "create database if not exists mysql;"
+  echo "use mysql;"
 
   case "$auth_root_authentication_method" in
     normal)
