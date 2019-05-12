@@ -1851,7 +1851,7 @@ bool mysql_upgrade_db(THD *thd, const LEX_CSTRING *old_db)
 
   /* Step9: Let's do "use newdb" if we renamed the current database */
   if (change_to_newdb)
-    error|= mysql_change_db(thd, & new_db, FALSE);
+    error|= mysql_change_db(thd, & new_db, FALSE) != 0;
 
 exit:
   DBUG_RETURN(error);
