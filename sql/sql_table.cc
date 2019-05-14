@@ -4185,9 +4185,15 @@ mysql_prepare_create_table(THD *thd, HA_CREATE_INFO *create_info,
     while ((check= c_it++))
     {
       if (!check->name.length)
+      {
+        Query_arena backup;
+        Query_arena *arena= thd->activate_stmt_arena_if_needed(&backup);
         make_unique_constraint_name(thd, &check->name,
                                     &alter_info->check_constraint_list,
                                     &nr);
+        if (arena)
+          thd->restore_active_arena(arena, &backup);
+      }
       {
         /* Check that there's no repeating constraint names. */
         List_iterator_fast<Virtual_column_info>
