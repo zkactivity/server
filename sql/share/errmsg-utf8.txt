@@ -7931,3 +7931,6 @@ ER_PERIOD_CONSTRAINT_DROP
         eng "Can't DROP CONSTRAINT `%s`. Use DROP PERIOD `%s` for this"
 ER_TOO_LONG_KEYPART 42000 S1009
         eng "Specified key part was too long; max key part length is %u bytes"
+
+ER_NO_FUNCTIONAL_DEPENDENCE_ON_GROUP_BY
+        eng "%s is not functionally dependent on GROUP BY fields"

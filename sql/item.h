@@ -1959,6 +1959,13 @@ public:
     Not to be used for AND/OR formulas.
   */
   virtual bool is_simplified_cond_processor(void *arg) { return false; }
+  virtual bool excl_func_dep_on_grouping_fields()
+  {
+    if (const_item())
+      return true;
+    return false;
+  }
+  virtual bool extract_field(Field **field_arg) { return false; }
 
   /** Processor used to check acceptability of an item in the defining
       expression for a virtual column 
@@ -2522,6 +2529,26 @@ protected:
       if (args[i]->const_item())
         continue;
       if (!args[i]->excl_dep_on_in_subq_left_part(subq_pred))
+        return false;
+    }
+    return true;
+  }
+  bool excl_func_dep_on_grouping_fields()
+  {
+    for (uint i= 0; i < arg_count; i++)
+    {
+      if (!args[i]->excl_func_dep_on_grouping_fields())
+        return false;
+    }
+    return true;
+  }
+  bool extract_field(Field **field_arg)
+  {
+    for (uint i= 0; i < arg_count; i++)
+    {
+      if (args[i]->const_item())
+        continue;
+      if (!args[i]->extract_field(field_arg))
         return false;
     }
     return true;
@@ -3444,7 +3471,15 @@ public:
   { return field ? 0 : cleanup_processor(arg); }
   bool cleanup_excluding_const_fields_processor(void *arg)
   { return field && const_item() ? 0 : cleanup_processor(arg); }
-  
+  bool excl_func_dep_on_grouping_fields();
+  bool extract_field(Field **field_arg)
+  {
+    if (*field_arg)
+      return false;
+    *field_arg= field;
+    return true;
+  }
+
   Item *get_copy(THD *thd)
   { return get_item_copy<Item_field>(thd, this); }
   bool is_outer_field() const

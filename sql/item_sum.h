@@ -587,6 +587,7 @@ public:
   virtual void setup_caches(THD *thd) {};
 
   bool with_sum_func() const { return true; }
+  bool excl_func_dep_on_grouping_fields() { return true; }
 };
 
 

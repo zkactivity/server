@@ -11258,3 +11258,11 @@ bool Field::val_str_nopad(MEM_ROOT *mem_root, LEX_CSTRING *to)
   thd->variables.sql_mode= sql_mode_backup;
   return rc;
 }
+
+
+bool Field::excl_func_dep_on_grouping_fields()
+{
+  if (vcol_info && vcol_info->expr->excl_func_dep_on_grouping_fields())
+    return true;
+  return bitmap_is_set(&table->tmp_set, field_index);
+}

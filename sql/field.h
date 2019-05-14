@@ -1678,6 +1678,7 @@ public:
     return NULL;
   }
   virtual bool sp_prepare_and_store_item(THD *thd, Item **value);
+  bool excl_func_dep_on_grouping_fields();
 
   friend int cre_myisam(char * name, TABLE *form, uint options,
 			ulonglong auto_increment_value);

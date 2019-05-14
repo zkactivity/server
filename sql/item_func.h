@@ -352,6 +352,16 @@ public:
     return Item_args::excl_dep_on_in_subq_left_part(subq_pred);
   }
 
+  bool excl_func_dep_on_grouping_fields()
+  {
+    return Item_args::excl_func_dep_on_grouping_fields();
+  }
+
+  bool extract_field(Field **field_arg)
+  {
+    return Item_args::extract_field(field_arg);
+  }
+
   /*
     We assume the result of any function that has a TIMESTAMP argument to be
     timezone-dependent, since a TIMESTAMP value in both numeric and string
@@ -1958,6 +1968,7 @@ public:
   bool const_item() const { return true; }
   Item *get_copy(THD *thd)
   { return get_item_copy<Item_func_coercibility>(thd, this); }
+  bool excl_func_dep_on_grouping_fields() { return false; }
 };
 
 

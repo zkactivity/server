@@ -2067,6 +2067,7 @@ public:
       Item_ident::print(str, query_type);
   }
   virtual Ref_Type ref_type() { return AGGREGATE_REF; }
+  bool excl_func_dep_on_grouping_fields() { return true; }
 };
 
 
@@ -9035,6 +9036,13 @@ bool
 Item_field::excl_dep_on_grouping_fields(st_select_lex *sel)
 {
   return find_matching_field_pair(this, sel->grouping_tmp_fields) != NULL;
+}
+
+
+bool
+Item_field::excl_func_dep_on_grouping_fields()
+{
+  return field->excl_func_dep_on_grouping_fields();
 }
 
 

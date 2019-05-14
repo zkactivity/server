@@ -3367,6 +3367,38 @@ void Item_func_case_simple::print(String *str, enum_query_type query_type)
 }
 
 
+bool Item_func_case_simple::excl_func_dep_on_grouping_fields()
+{
+  const Type_handler *first_expr_cmp_handler;
+
+  // CASE (switch) argument
+  first_expr_cmp_handler= args[0]->type_handler_for_comparison();
+  if (m_found_types != (1UL << first_expr_cmp_handler->cmp_type()) ||
+      !args[0]->excl_func_dep_on_grouping_fields())
+    return false;
+
+  // arguments in comparison
+  uint i, count= when_count();
+  for (i= 1; i <= count; i++)
+  {
+    Type_handler_hybrid_field_type tmp(first_expr_cmp_handler);
+    if (tmp.aggregate_for_comparison(args[i]->type_handler_for_comparison()) ||
+        !args[i]->excl_func_dep_on_grouping_fields())
+      return false;
+  }
+
+  // then and else columns should be the same type?
+  // THEN and ELSE arguments
+  for (; i < arg_count; i++)
+  {
+    if (!args[i]->excl_func_dep_on_grouping_fields())
+      return false;
+  }
+
+  return true;
+}
+
+
 void Item_func_decode_oracle::print(String *str, enum_query_type query_type)
 {
   str->append(func_name());
@@ -5235,6 +5267,19 @@ bool Item_cond::excl_dep_on_grouping_fields(st_select_lex *sel)
   while ((item= li++))
   {
     if (!item->excl_dep_on_grouping_fields(sel))
+      return false;
+  }
+  return true;
+}
+
+
+bool Item_cond::excl_func_dep_on_grouping_fields()
+{
+  List_iterator_fast<Item> li(list);
+  Item *item;
+  while ((item= li++))
+  {
+    if (!item->excl_func_dep_on_grouping_fields())
       return false;
   }
   return true;

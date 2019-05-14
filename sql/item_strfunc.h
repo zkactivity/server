@@ -1521,6 +1521,7 @@ public:
   Item* propagate_equal_fields(THD *thd, const Context &ctx, COND_EQUAL *cond)
   { return this; }
   bool const_item() const { return true; }
+  bool excl_func_dep_on_grouping_fields() { return false; }
 };
 
 
@@ -1580,6 +1581,7 @@ public:
   void print(String *str, enum_query_type query_type);
   Item *get_copy(THD *thd)
   { return get_item_copy<Item_func_weight_string>(thd, this); }
+  bool excl_func_dep_on_grouping_fields() { return false; }
 };
 
 class Item_func_crc32 :public Item_long_func

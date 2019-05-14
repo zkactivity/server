@@ -1596,6 +1596,7 @@ public:
   void find_constraint_correlated_indexes();
   void clone_handler_for_update();
   void delete_update_handler();
+  bool set_unique_key_as_func_dep(KEY *unique_key);
 
 /** Number of additional fields used in versioned tables */
 #define VERSIONING_FIELDS 2

@@ -2270,6 +2270,7 @@ public:
   } 
   Item *get_copy(THD *thd)
   { return get_item_copy<Item_func_case_simple>(thd, this); }
+  bool excl_func_dep_on_grouping_fields();
 };
 
 
@@ -2462,6 +2463,19 @@ public:
   bool to_be_transformed_into_in_subq(THD *thd);
   bool create_value_list_for_tvc(THD *thd, List< List<Item> > *values);
   Item *in_predicate_to_in_subs_transformer(THD *thd, uchar *arg);
+  bool excl_func_dep_on_grouping_fields()
+  {
+    if (!arg_types_compatible ||
+         !args[0]->excl_func_dep_on_grouping_fields())
+      return false;
+    for (uint i= 0; i < comparator_count(); i++)
+    {
+      uint idx= get_comparator_arg_index(i);
+      if (!args[idx]->excl_func_dep_on_grouping_fields())
+        return false;
+    }
+    return true;
+  }
 };
 
 class cmp_item_row :public cmp_item
@@ -2782,6 +2796,14 @@ public:
   
   Item *get_copy(THD *thd)
   { return get_item_copy<Item_func_like>(thd, this); }
+  bool excl_func_dep_on_grouping_fields()
+  {
+    uint flags= Item_func_like::compare_collation()->state;
+    if (!((flags & MY_CS_NOPAD) && !(flags & MY_CS_NON1TO1)) ||
+        !Item_args::excl_func_dep_on_grouping_fields())
+      return false;
+    return true;
+  }
 };
 
 
@@ -3012,6 +3034,7 @@ public:
   Item *build_clone(THD *thd);
   bool excl_dep_on_table(table_map tab_map);
   bool excl_dep_on_grouping_fields(st_select_lex *sel);
+  bool excl_func_dep_on_grouping_fields();
 };
 
 template <template<class> class LI, class T> class Item_equal_iterator;
