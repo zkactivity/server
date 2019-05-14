@@ -1,0 +1,18 @@
+call mtr.add_suppression("InnoDB: The page \\[page id: space=[0-9][0-9]*, page number=6\\] in file '.*test.t2\\.ibd' cannot be decrypted\\.");
+call mtr.add_suppression("InnoDB:  Error code: .* btr_pcur_open_low  level: 0 called from file: .*");
+CREATE TABLE t1 (pk INT PRIMARY KEY AUTO_INCREMENT, c VARCHAR(256)) ENGINE=INNODB ENCRYPTED=YES;
+select * from t1 into outfile "MYSQLTEST_VARDIR/tmp/t1.outfile";
+select count(*) from t1;
+count(*)
+10
+CREATE TABLE t2 (pk INT, c CHAR(255)) ENGINE=INNODB ENCRYPTED=YES;
+insert into t2 values(1000, "mariadb"), (1001, "server"), (1002, "test");
+insert into t2 values(1003, "mysql"), (1004, "test1"), (1005, "test2");
+insert into t2 select * from t2;
+insert into t2 select * from t2;
+insert into t2 select * from t2;
+insert into t2 select * from t2;
+# Corrupt the pages
+load data infile 'MYSQLTEST_VARDIR/tmp/t1.outfile' into table t2;
+Got one of the listed errors
+drop table t1, t2;
