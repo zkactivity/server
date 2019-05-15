@@ -6,7 +6,7 @@
 msgid ""
 msgstr ""
 "Project-Id-Version: eu\n"
-"Report-Msgid-Bugs-To: mariadb-10.4@packages.debian.org\n"
+"Report-Msgid-Bugs-To: mariadb-10.5@packages.debian.org\n"
 "POT-Creation-Date: 2016-10-08 01:26+0300\n"
 "PO-Revision-Date: 2009-07-29 11:59+0200\n"
 "Last-Translator: Piarres Beobide <pi@beobide.net>\n"

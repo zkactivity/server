@@ -15,7 +15,7 @@
 msgid ""
 msgstr ""
 "Project-Id-Version: mysql-dfsg-5.1_5.1.37-1_de\n"
-"Report-Msgid-Bugs-To: mariadb-10.4@packages.debian.org\n"
+"Report-Msgid-Bugs-To: mariadb-10.5@packages.debian.org\n"
 "POT-Creation-Date: 2016-10-08 01:26+0300\n"
 "PO-Revision-Date: 2009-08-27 22:41+0200\n"
 "Last-Translator: Thomas Mueller <thomas.mueller@tmit.eu>\n"

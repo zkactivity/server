@@ -6,7 +6,7 @@
 msgid ""
 msgstr ""
 "Project-Id-Version: mysql_nb\n"
-"Report-Msgid-Bugs-To: mariadb-10.4@packages.debian.org\n"
+"Report-Msgid-Bugs-To: mariadb-10.5@packages.debian.org\n"
 "POT-Creation-Date: 2016-10-08 01:26+0300\n"
 "PO-Revision-Date: 2007-02-18 12:13+0100\n"
 "Last-Translator: Bjørn Steensrud <bjornst@powertech.no>\n"
