@@ -5,8 +5,8 @@
 --source include/galera_cluster.inc
 --source include/have_innodb.inc
 
-CREATE TABLE t1 (f1 INTEGER) ENGINE=InnoDB;
-INSERT INTO t1 VALUES (1);
+CREATE TABLE t1 (f1 INTEGER NOT NULL PRIMARY KEY AUTO_INCREMENT,B INTEGER) ENGINE=InnoDB;
+INSERT INTO t1 VALUES (1,1);
 
 --connection node_2
 SET SESSION wsrep_sync_wait=15;
@@ -19,20 +19,20 @@ SET GLOBAL wsrep_provider_options = 'gcs.fc_limit=1';
 LOCK TABLE t1 WRITE;
 
 --connection node_1
-INSERT INTO t1 VALUES (2);
-INSERT INTO t1 VALUES (3);
-INSERT INTO t1 VALUES (4);
+INSERT INTO t1 VALUES (2,2);
+INSERT INTO t1 VALUES (3,3);
+INSERT INTO t1 VALUES (4,4);
 
 # This query will hang because flow control will kick in
 --send
-INSERT INTO t1 VALUES (5);
+INSERT INTO t1(B) SELECT B FROM t1;
 
 --let $galera_connection_name = node_1a
 --let $galera_server_number = 1
 --source include/galera_connect.inc
 --connection node_1a
 
---let $wait_condition = SELECT COUNT(*) = 1 FROM INFORMATION_SCHEMA.PROCESSLIST WHERE STATE = 'query end' AND INFO = 'INSERT INTO t1 VALUES (5)';
+--let $wait_condition = SELECT COUNT(*) = 1 FROM INFORMATION_SCHEMA.PROCESSLIST WHERE STATE = 'query end' AND INFO = 'INSERT INTO t1(B) SELECT B FROM t1';
 --source include/wait_condition.inc
 
 --connection node_2
@@ -42,7 +42,7 @@ UNLOCK TABLES;
 --connection node_1
 --reap
 
-INSERT INTO t1 VALUES (6);
+INSERT INTO t1 VALUES (NULL,6);
 
 --connection node_2
 # Replication catches up and continues normally
