@@ -32,7 +32,8 @@ INSERT INTO t1(B) SELECT B FROM t1;
 --source include/galera_connect.inc
 --connection node_1a
 
---let $wait_condition = SELECT COUNT(*) = 1 FROM INFORMATION_SCHEMA.PROCESSLIST WHERE STATE = 'query end' AND INFO = 'INSERT INTO t1(B) SELECT B FROM t1';
+--echo # In node_1 either insert or commit should be stuck
+--let $wait_condition = SELECT COUNT(*) = 1 FROM INFORMATION_SCHEMA.PROCESSLIST WHERE (STATE = 'query end' AND INFO = 'INSERT INTO t1(B) SELECT B FROM t1') OR STATE LIKE 'committed%';
 --source include/wait_condition.inc
 
 --connection node_2
