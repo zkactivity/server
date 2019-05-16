@@ -6,6 +6,7 @@ COUNT(*)
 1
 SET GLOBAL wsrep_provider_options = 'gcs.fc_limit=1';
 LOCK TABLE t1 WRITE;
+FLUSH STATUS;
 INSERT INTO t1 VALUES (2,2);
 INSERT INTO t1 VALUES (3,3);
 INSERT INTO t1 VALUES (4,4);
