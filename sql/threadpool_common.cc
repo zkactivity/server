@@ -36,6 +36,8 @@ uint threadpool_max_threads;
 uint threadpool_oversubscribe;
 uint threadpool_mode;
 uint threadpool_prio_kickup_timer;
+my_bool threadpool_exact_stats;
+my_bool threadpool_dedicated_listener;
 
 /* Stats */
 TP_STATISTICS tp_stats;
@@ -153,9 +155,8 @@ static TP_PRIORITY get_priority(TP_connection *c)
   DBUG_ASSERT(c->thd == current_thd);
   TP_PRIORITY prio= (TP_PRIORITY)c->thd->variables.threadpool_priority;
   if (prio == TP_PRIORITY_AUTO)
-  {
-    return c->thd->transaction.is_active() ? TP_PRIORITY_HIGH : TP_PRIORITY_LOW;
-  }
+    prio= c->thd->transaction.is_active() ? TP_PRIORITY_HIGH : TP_PRIORITY_LOW;
+
   return prio;
 }
 
