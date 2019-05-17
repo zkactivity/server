@@ -5983,26 +5983,32 @@ fil_space_remove_from_keyrotation(fil_space_t* space)
 Once started, the caller must keep calling this until it returns NULL.
 fil_space_acquire() and fil_space_release() are invoked here which
 blocks a concurrent operation from dropping the tablespace.
-@param[in]	prev_space	Pointer to the previous fil_space_t.
+@param[in]	prev_space	Pointer to the previous fil_space_t
+@param[in]	remove		remove the previous fil_space_t from
+				the rotation list
 If NULL, use the first fil_space_t on fil_system->space_list.
 @return pointer to the next fil_space_t.
 @retval NULL if this was the last*/
 fil_space_t*
 fil_space_keyrotate_next(
-	fil_space_t*	prev_space)
+	fil_space_t*	prev_space,
+	bool		remove)
 {
+	ut_ad(mutex_own(&fil_system->mutex));
+
 	fil_space_t* space = prev_space;
 	fil_space_t* old   = NULL;
-
-	mutex_enter(&fil_system->mutex);
 
 	if (UT_LIST_GET_LEN(fil_system->rotation_list) == 0) {
 		if (space) {
 			ut_ad(space->n_pending_ops > 0);
 			space->n_pending_ops--;
-			fil_space_remove_from_keyrotation(space);
+
+			if (remove) {
+				fil_space_remove_from_keyrotation(space);
+			}
 		}
-		mutex_exit(&fil_system->mutex);
+
 		return(NULL);
 	}
 
@@ -6020,7 +6026,9 @@ fil_space_keyrotate_next(
 		old = space;
 		space = UT_LIST_GET_NEXT(rotation_list, space);
 
-		fil_space_remove_from_keyrotation(old);
+		if (remove) {
+			fil_space_remove_from_keyrotation(old);
+		}
 	}
 
 	/* Skip spaces that are being created by fil_ibd_create(),
@@ -6032,14 +6040,15 @@ fil_space_keyrotate_next(
 
 		old = space;
 		space = UT_LIST_GET_NEXT(rotation_list, space);
-		fil_space_remove_from_keyrotation(old);
+
+		if (remove) {
+			fil_space_remove_from_keyrotation(old);
+		}
 	}
 
 	if (space != NULL) {
 		space->n_pending_ops++;
 	}
-
-	mutex_exit(&fil_system->mutex);
 
 	return(space);
 }
