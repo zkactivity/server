@@ -41,6 +41,7 @@ static ST_FIELD_INFO fields_info[] =
 
 static int fill_table(THD* thd, TABLE_LIST* tables, COND*)
 {
+#ifndef EMBEDDED_LIBRARY
   if (!all_groups)
     return 0;
 
@@ -67,10 +68,14 @@ static int fill_table(THD* thd, TABLE_LIST* tables, COND*)
       return 1;
   }
   return 0;
+#else
+  return 0;
+#endif /*EMBEDDED_LIBRARY*/
 }
 
 static int reset_table()
 {
+#ifndef EMBEDDED_LIBRARY
   for (uint i = 0; i < threadpool_max_size && all_groups[i].pollfd != INVALID_HANDLE_VALUE; i++)
   {
     thread_group_t* group = &all_groups[i];
@@ -79,6 +84,9 @@ static int reset_table()
     mysql_mutex_unlock(&group->mutex);
   }
   return 0;
+#else
+  return 0;
+#endif /*EMBEDDED_LIBRARY*/
 }
 
 static int init(void* p)

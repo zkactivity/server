@@ -13,7 +13,7 @@
    along with this program; if not, write to the Free Software
    Foundation, Inc., 51 Franklin Street, Fifth Floor, Boston, MA 02111-1301 USA */
 
-#ifdef HAVE_POOL_OF_THREADS
+#if (defined HAVE_POOL_OF_THREADS) && !defined(EMBEDDED_LIBRARY)
 
 #include "threadpool_generic.h"
 #include "mariadb.h"

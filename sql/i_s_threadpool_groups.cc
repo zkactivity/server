@@ -38,6 +38,7 @@ static ST_FIELD_INFO fields_info[] =
 
 static int fill_table(THD* thd, TABLE_LIST* tables, COND*)
 {
+#ifndef EMBEDDED_LIBRARY
   if (!all_groups)
     return 0;
 
@@ -68,6 +69,9 @@ static int fill_table(THD* thd, TABLE_LIST* tables, COND*)
       return 1;
   }
   return 0;
+#else
+  return 0;
+#endif /*EMBEDDED_LIBRARY*/
 }
 
 
