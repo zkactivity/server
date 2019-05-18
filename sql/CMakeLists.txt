@@ -163,9 +163,10 @@ IF ((CMAKE_SYSTEM_NAME MATCHES "Linux" OR
  ENDIF()
  SET(SQL_SOURCE ${SQL_SOURCE} threadpool_generic.cc)
  SET(SQL_SOURCE ${SQL_SOURCE} threadpool_common.cc)
- MYSQL_ADD_PLUGIN(thread_pool_groups i_s_threadpool_groups.cc DEFAULT RECOMPILE_FOR_EMBEDDED)
- MYSQL_ADD_PLUGIN(thread_pool_stats i_s_threadpool_stats.cc DEFAULT RECOMPILE_FOR_EMBEDDED)
- MYSQL_ADD_PLUGIN(thread_pool_queues i_s_threadpool_queues.cc DEFAULT RECOMPILE_FOR_EMBEDDED)
+ MYSQL_ADD_PLUGIN(thread_pool_groups i_s_threadpool_groups.cc DEFAULT STATIC_ONLY NOT_EMBEDDED)
+ MYSQL_ADD_PLUGIN(thread_pool_stats i_s_threadpool_stats.cc DEFAULT STATIC_ONLY NOT_EMBEDDED)
+ MYSQL_ADD_PLUGIN(thread_pool_queues i_s_threadpool_queues.cc DEFAULT STATIC_ONLY NOT_EMBEDDED)
+ MYSQL_ADD_PLUGIN(thread_pool_waits i_s_threadpool_waits.cc DEFAULT STATIC_ONLY NOT_EMBEDDED)
 ENDIF()
 
 IF(WIN32)

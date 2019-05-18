@@ -13,7 +13,7 @@
  * along with this program; if not, write to the Free Software
  * Foundation, Inc., 51 Franklin Street, Fifth Floor, Boston, MA 02111 - 1301 USA*/
 
-#if defined (HAVE_POOL_OF_THREADS) && !defined (EMBEDDED_LIBRARY)
+#if defined (HAVE_POOL_OF_THREADS)
 #include <my_global.h>
 #include <sql_plist.h>
 #include <my_pthread.h>
