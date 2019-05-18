@@ -332,6 +332,17 @@ ELSE()
       COMPONENT ${${file}_COMPONENT}
      )
   ENDFOREACH()
+
+  # MariaDB symlinks
+  CREATE_MARIADB_SYMLINK(mysql_config mariadb-config)
+  CREATE_MARIADB_SYMLINK(mysql_setpermission mariadb-setpermission)
+  CREATE_MARIADB_SYMLINK(mysql_secure_installation mariadb-secure-installation)
+  CREATE_MARIADB_SYMLINK(mysqlaccess mariadb-access)
+  CREATE_MARIADB_SYMLINK(mysql_convert_table_format mariadb-convert-table-format)
+  CREATE_MARIADB_SYMLINK(mysql_find_rows mariadb-find-rows)
+  CREATE_MARIADB_SYMLINK(mytop mariadb-top)
+  CREATE_MARIADB_SYMLINK(mysqlhotcopy mariadb-hotcopy)
+
   SET (wsrep_sst_rsync_wan ${CMAKE_CURRENT_BINARY_DIR}/wsrep_sst_rsync_wan)
   ADD_CUSTOM_COMMAND(
     OUTPUT ${wsrep_sst_rsync_wan}

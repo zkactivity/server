@@ -93,11 +93,25 @@ TARGET_LINK_LIBRARIES(async_example ${CLIENT_LIB})
 SET_TARGET_PROPERTIES (mysqlcheck mysqldump mysqlimport mysql_upgrade mysqlshow mysqlslap mysql_plugin async_example
 PROPERTIES HAS_CXX TRUE)
 
-
-FOREACH(t mysql mysqltest mysqltest mysqlcheck mysqldump mysqlimport mysql_upgrade mysqlshow mysql_plugin mysqlbinlog
+FOREACH(t mysql mysqltest mysqlcheck mysqldump mysqlimport mysql_upgrade mysqlshow mysql_plugin mysqlbinlog
   mysqladmin mysqlslap async_example)
   ADD_DEPENDENCIES(${t} GenError ${CLIENT_LIB})
 ENDFOREACH()
 
-ADD_DEFINITIONS(-DHAVE_DLOPEN)
+# MariaDB symlinks
+CREATE_MARIADB_SYMLINK(mysql mariadb)
+CREATE_MARIADB_SYMLINK(mysqlaccess mariadb-access)
+CREATE_MARIADB_SYMLINK(mysqladmin mariadb-admin)
+CREATE_MARIADB_SYMLINK(mysqlbinlog mariadb-binlog)
+CREATE_MARIADB_SYMLINK(mysqlcheck mariadb-check)
+CREATE_MARIADB_SYMLINK(mysqldump mariadb-dump)
+CREATE_MARIADB_SYMLINK(mysql_embedded mariadb-embedded) 
+CREATE_MARIADB_SYMLINK(mysql_find_rows mariadb-find-rows)
+CREATE_MARIADB_SYMLINK(mysqlimport mariadb-import) 
+CREATE_MARIADB_SYMLINK(mysql_plugin mariadb-plugin)
+CREATE_MARIADB_SYMLINK(mysqlshow mariadb-show)
+CREATE_MARIADB_SYMLINK(mysqlslap mariadb-slap)
+CREATE_MARIADB_SYMLINK(mysqltest mariadb-test)
+CREATE_MARIADB_SYMLINK(mysql_waitpid mariadb-waitpid)
 
+ADD_DEFINITIONS(-DHAVE_DLOPEN)
