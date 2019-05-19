@@ -23,7 +23,7 @@
 #include <sql_audit.h>
 #include <debug_sync.h>
 #include <threadpool.h>
-#include <atomic>
+#include <my_counter.h>
 
 /* Threadpool parameters */
 
@@ -477,7 +477,7 @@ void tp_timeout_handler(TP_connection *c)
   mysql_mutex_unlock(&thd->LOCK_thd_kill);
 }
 
-MY_ALIGNED(CPU_LEVEL1_DCACHE_LINESIZE) std::atomic<unsigned long long> tp_waits[THD_WAIT_LAST];
+MY_ALIGNED(CPU_LEVEL1_DCACHE_LINESIZE) Atomic_counter<unsigned long long> tp_waits[THD_WAIT_LAST];
 
 static void tp_wait_begin(THD *thd, int type)
 {

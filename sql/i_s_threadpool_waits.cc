@@ -22,7 +22,7 @@ Foundation, Inc., 51 Franklin Street, Fifth Floor, Boston, MA 02111 - 1301 USA*/
 #include <table.h>
 #include <mysql/plugin.h>
 #include <sql_show.h>
-#include <atomic>
+#include <my_counter.h>
 
 
 static ST_FIELD_INFO fields_info[] =
@@ -49,7 +49,7 @@ static const LEX_CSTRING wait_reasons[THD_WAIT_LAST]=
   {STRING_WITH_LEN("NET")}
 };
 
-extern std::atomic<unsigned long long> tp_waits[THD_WAIT_LAST];
+extern Atomic_counter<unsigned long long> tp_waits[THD_WAIT_LAST];
 
 static int fill_table(THD* thd, TABLE_LIST* tables, COND*)
 {
@@ -61,6 +61,8 @@ static int fill_table(THD* thd, TABLE_LIST* tables, COND*)
   {
     table->field[0]->store(wait_reasons[i].str, wait_reasons[i].length, system_charset_info);
     table->field[1]->store(tp_waits[i], true);
+    if (schema_table_store_record(thd, table))
+      return 1;
   }
   return 0;
 }
