@@ -477,7 +477,7 @@ void tp_timeout_handler(TP_connection *c)
   mysql_mutex_unlock(&thd->LOCK_thd_kill);
 }
 
-alignas(CPU_LEVEL1_DCACHE_LINESIZE) std::atomic_uint64_t tp_waits[THD_WAIT_LAST];
+alignas(CPU_LEVEL1_DCACHE_LINESIZE) std::atomic<unsigned long long> tp_waits[THD_WAIT_LAST];
 
 static void tp_wait_begin(THD *thd, int type)
 {

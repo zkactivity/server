@@ -49,7 +49,7 @@ static const LEX_CSTRING wait_reasons[THD_WAIT_LAST]=
   {STRING_WITH_LEN("NET")}
 };
 
-extern std::atomic_uint64_t tp_waits[THD_WAIT_LAST];
+extern std::atomic<unsigned long long> tp_waits[THD_WAIT_LAST];
 
 static int fill_table(THD* thd, TABLE_LIST* tables, COND*)
 {
