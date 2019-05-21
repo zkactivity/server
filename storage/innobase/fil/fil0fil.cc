@@ -5985,18 +5985,30 @@ fil_space_acquire() and fil_space_release() are invoked here which
 blocks a concurrent operation from dropping the tablespace.
 @param[in]	prev_space	Previous tablespace or NULL to start
 				from beginning of fil_system->rotation list
-@param[in]	remove		Whether to remove the previous tablespace from
-				the rotation list
+@param[in]	recheck		recheck of the tablespace is needed or
+				still encryption thread does write page0 for it
+@param[in]	key_version	key version of the key state thread
 If NULL, use the first fil_space_t on fil_system->space_list.
 @return pointer to the next fil_space_t.
-@retval NULL if this was the last*/
+@retval NULL if this was the last */
 fil_space_t*
-fil_space_keyrotate_next(fil_space_t* prev_space, bool remove)
+fil_system_t::keyrotate_next(
+	fil_space_t*	prev_space,
+	bool		recheck,
+	uint		key_version)
 {
-	ut_ad(mutex_own(&fil_system->mutex));
+	mutex_enter(&fil_system->mutex);
+
+	/* If one of the encryption threads already started the encryption
+	of the table then don't remove the unencrypted spaces from
+	rotation list
+
+	If there is a change in innodb_encrypt_tables variables value then
+	don't remove the last processed tablespace from the rotation list. */
+	const bool remove = ((!recheck || prev_space->crypt_data)
+			     && (!key_version == !srv_encrypt_tables));
 
 	fil_space_t* space = prev_space;
-	fil_space_t* old   = NULL;
 
 	if (prev_space == NULL) {
 		space = UT_LIST_GET_FIRST(fil_system->rotation_list);
@@ -6009,7 +6021,6 @@ fil_space_keyrotate_next(fil_space_t* prev_space, bool remove)
 		/* Move on to the next fil_space_t */
 		space->n_pending_ops--;
 
-		old = space;
 		space = UT_LIST_GET_NEXT(rotation_list, space);
 
 		while (space != NULL
@@ -6019,7 +6030,7 @@ fil_space_keyrotate_next(fil_space_t* prev_space, bool remove)
 		}
 
 		if (remove) {
-			fil_space_remove_from_keyrotation(old);
+			fil_space_remove_from_keyrotation(prev_space);
 		}
 	}
 
@@ -6027,6 +6038,7 @@ fil_space_keyrotate_next(fil_space_t* prev_space, bool remove)
 		space->n_pending_ops++;
 	}
 
+	mutex_exit(&fil_system->mutex);
 	return(space);
 }
 

@@ -538,6 +538,25 @@ struct fil_system_t {
 	@return	tablespace
 	@retval	NULL	if the tablespace does not exist or cannot be read */
 	fil_space_t* read_page0(ulint id);
+
+	/** Return the next fil_space_t from key rotation list.
+	Once started, the caller must keep calling this until it returns NULL.
+	fil_space_acquire() and fil_space_release() are invoked here which
+	blocks a concurrent operation from dropping the tablespace.
+	@param[in]      prev_space      Previous tablespace or NULL to start
+					from beginning of fil_system->rotation
+					list
+	@param[in]      recheck         recheck of the tablespace is needed or
+					still encryption thread does write page0
+					for it
+	@param[in]	key_version	key version of the key state thread
+	If NULL, use the first fil_space_t on fil_system->space_list.
+	@return pointer to the next fil_space_t.
+	@retval NULL if this was the last */
+	fil_space_t* keyrotate_next(
+		fil_space_t*	prev_space,
+		bool		remove,
+		uint		key_version);
 };
 
 /** The tablespace memory cache. This variable is NULL before the module is

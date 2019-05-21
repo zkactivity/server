@@ -943,14 +943,10 @@ fil_crypt_read_crypt_data(fil_space_t* space)
 	mtr.commit();
 }
 
-/***********************************************************************
-Start encrypting a space
+/** Start encrypting a space
 @param[in,out]		space		Tablespace
-@return true if a recheck is needed */
-static
-bool
-fil_crypt_start_encrypting_space(
-	fil_space_t*	space)
+@return true if a recheck of tablespace is needed by encryption thread. */
+static bool fil_crypt_start_encrypting_space(fil_space_t* space)
 {
 	bool recheck = false;
 
@@ -1408,46 +1404,12 @@ fil_crypt_return_iops(
 	fil_crypt_update_total_stat(state);
 }
 
-/** Fetch the space id from key rotation list. This function depends
-whether InnoDB have to remove the tablespace from rotation list.
-@param[in]	prev_space	previous tablespace in rotation list or NULL
-@param[in]	recheck		recheck of the tablespace is needed or
-				still encryption thread does write page0 for it
-@param[in]	key_version	key version of the key state thread.
-@return next space from the rotation list. */
-static fil_space_t*
-fil_crypt_fetch_keyrotate_next(
-	fil_space_t*	prev_space,
-	bool		recheck,
-	uint		key_version)
-{
-	mutex_enter(&fil_system->mutex);
-
-	fil_space_t*	space;
-
-	/* If one of the encryption threads already started the encryption
-	of the tables then don't remove the unencrypted tablespace from
-	rotation list.
-
-	If there is a change in innod_encrypt_tables variable then don't
-	remove the last processed tablespace from rotation list. */
-
-	const bool remove = !((recheck && !prev_space->crypt_data)
-			      || (!key_version != !srv_encrypt_tables));
-
-	space = fil_space_keyrotate_next(prev_space, remove);
-	mutex_exit(&fil_system->mutex);
-	return space;
-}
-
-/***********************************************************************
-Search for a space needing rotation
-@param[in,out]		key_state		Key state
-@param[in,out]		state			Rotation state
-@param[in,out]		recheck			recheck ? */
-static
-bool
-fil_crypt_find_space_to_rotate(
+/** Search for a space needing rotation
+@param[in,out]	key_state	Key state
+@param[in,out]	state		Rotation state
+@param[in,out	recheck		recheck of the tablespace is needed or
+				still encryption thread does write page 0 */
+static bool fil_crypt_find_space_to_rotate(
 	key_state_t*		key_state,
 	rotate_thread_t*	state,
 	bool*			recheck)
@@ -1480,7 +1442,7 @@ fil_crypt_find_space_to_rotate(
 	if (srv_fil_crypt_rotate_key_age) {
 		state->space = fil_space_next(state->space);
 	} else {
-		state->space = fil_crypt_fetch_keyrotate_next(
+		state->space = fil_system->keyrotate_next(
 					state->space, *recheck,
 					key_state->key_version);
 	}
@@ -1504,7 +1466,7 @@ fil_crypt_find_space_to_rotate(
 		if (srv_fil_crypt_rotate_key_age) {
 			state->space = fil_space_next(state->space);
 		} else {
-			state->space = fil_crypt_fetch_keyrotate_next(
+			state->space = fil_system->keyrotate_next(
 					state->space, *recheck,
 					key_state->key_version);
 		}
