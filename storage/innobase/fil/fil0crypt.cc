@@ -1039,16 +1039,6 @@ fil_crypt_start_encrypting_space(
 			sum_pages += n_pages;
 		} while (!success);
 
-#if 0
-		DBUG_EXECUTE_IF("start_encrypting_delay",
-				static int test = 0;
-				if (test == 0) {
-					os_thread_sleep(2000000);
-					ut_ad(0);
-				}
-				test++;);
-#endif
-
 		/* 5 - publish crypt data */
 		mutex_enter(&fil_crypt_threads_mutex);
 		mutex_enter(&crypt_data->mutex);
@@ -1435,25 +1425,17 @@ fil_crypt_fetch_keyrotate_next(
 
 	fil_space_t*	space;
 
-	/* If one of the encryption threads already started the initialization
-	of the tablespace then don't remove the other uninitialized tablespace
-	from the rotation list. */
-	if (recheck && !prev_space->crypt_data) {
-		space = fil_space_keyrotate_next(prev_space, false);
-		mutex_exit(&fil_system->mutex);
-		return space;
-	}
+	/* If one of the encryption threads already started the encryption
+	of the tables then don't remove the unencrypted tablespace from
+	rotation list.
 
-	/* If there is a change in innodb_encrypt_tables then
-	don't remove the processed tablespace from rotation list. */
-	if ((key_version && !srv_encrypt_tables)
-	    || (!key_version && srv_encrypt_tables)) {
-		space = fil_space_keyrotate_next(prev_space, false);
-		mutex_exit(&fil_system->mutex);
-		return space;
-	}
+	If there is a change in innod_encrypt_tables variable then don't
+	remove the last processed tablespace from rotation list. */
 
-	space = fil_space_keyrotate_next(prev_space);
+	const bool remove = !((recheck && !prev_space->crypt_data)
+			      || (!key_version != !srv_encrypt_tables));
+
+	space = fil_space_keyrotate_next(prev_space, remove);
 	mutex_exit(&fil_system->mutex);
 	return space;
 }
@@ -2247,13 +2229,6 @@ DECLARE_THREAD(fil_crypt_thread)(
 			if (thr.space) {
 				fil_crypt_complete_rotate_space(&new_state, &thr);
 			}
-#if 0
-			DBUG_EXECUTE_IF("delay_rotation_traversal",
-					static ulint first_space = 0;
-					if (first_space == 0) {
-						os_thread_sleep(2000000);
-					});
-#endif
 
 			/* force key state refresh */
 			new_state.key_id = 0;
@@ -2425,21 +2400,6 @@ fil_crypt_set_encrypt_tables(
 	uint val)
 {
 	mutex_enter(&fil_system->mutex);
-
-#if 0
-	DBUG_EXECUTE_IF(
-		"delay_rotation_traversal",
-		if (!val) {
-			fil_space_t* space = UT_LIST_GET_FIRST(
-				fil_system->rotation_list);
-			while (!space->crypt_data
-			       || space->crypt_data->rotate_state.flushing) {
-				mutex_exit(&fil_system->mutex);
-				os_thread_sleep(200000);
-				mutex_enter(&fil_system->mutex);
-			}
-		});
-#endif
 
 	srv_encrypt_tables = val;
 
