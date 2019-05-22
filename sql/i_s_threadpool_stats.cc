@@ -25,7 +25,7 @@ Foundation, Inc., 51 Franklin Street, Fifth Floor, Boston, MA 02111 - 1301 USA*/
 
 static ST_FIELD_INFO fields_info[] =
 {
-  {"GROUP_ID", 6, MYSQL_TYPE_LONGLONG, 0, 0, 0, 0},
+  {"GROUP_ID", 6, MYSQL_TYPE_LONG, 0, 0, 0, 0},
   {"THREAD_CREATIONS",19,MYSQL_TYPE_LONGLONG,0,0, 0,0},
   {"THREAD_CREATIONS_DUE_TO_STALL",19,MYSQL_TYPE_LONGLONG,0,0, 0,0},
   {"WAKES",19,MYSQL_TYPE_LONGLONG,0,0, 0,0},

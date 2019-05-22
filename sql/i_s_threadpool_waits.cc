@@ -27,7 +27,7 @@ Foundation, Inc., 51 Franklin Street, Fifth Floor, Boston, MA 02111 - 1301 USA*/
 
 static ST_FIELD_INFO fields_info[] =
 {
-  {"REASON", 6, MYSQL_TYPE_STRING, 0, 0, 0, 0},
+  {"REASON", 16, MYSQL_TYPE_STRING, 0, 0, 0, 0},
   {"COUNT",19,MYSQL_TYPE_LONGLONG,0,0, 0,0},
   {0, 0, MYSQL_TYPE_STRING, 0, 0, 0, 0}
 };

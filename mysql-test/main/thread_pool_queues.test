@@ -1,0 +1,7 @@
+let $have_plugin = `SELECT COUNT(*) FROM INFORMATION_SCHEMA.PLUGINS WHERE PLUGIN_STATUS='ACTIVE' AND PLUGIN_NAME = 'THREAD_POOL_QUEUES'`;
+if(!$have_plugin)
+{
+  --skip Need thread_pool_queues
+}
+DESC INFORMATION_SCHEMA.THREAD_POOL_QUEUES;
+#Todo - figure out how to populate queue with debug test
