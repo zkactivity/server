@@ -292,6 +292,9 @@ enum enum_alter_inplace_result {
 
 #define HA_PERSISTENT_TABLE              (1ULL << 48)
 
+/* If storage engine uses another engine as a base */
+#define HA_REUSES_FILE_NAMES             (1ULL << 49)
+
 /*
   Set of all binlog flags. Currently only contain the capabilities
   flags.
@@ -510,6 +513,7 @@ enum legacy_db_type
   DB_TYPE_BINLOG=21,
   DB_TYPE_PBXT=23,
   DB_TYPE_PERFORMANCE_SCHEMA=28,
+  DB_TYPE_S3=41,
   DB_TYPE_ARIA=42,
   DB_TYPE_TOKUDB=43,
   DB_TYPE_SEQUENCE=44,
@@ -1641,6 +1645,14 @@ struct handlerton
    */
    int (*discover_table_structure)(handlerton *hton, THD* thd,
                                    TABLE_SHARE *share, HA_CREATE_INFO *info);
+
+  /*
+    Notify the storage engine that the definition of the table (and the .frm
+    file) has changed. Returns 0 if ok.
+  */
+  int (*notify_tabledef_changed)(handlerton *hton, LEX_CSTRING *db,
+                                 LEX_CSTRING *table_name, LEX_CUSTRING *frm,
+                                 LEX_CUSTRING *org_tabledef_version);
 
    /*
      System Versioning
@@ -4269,7 +4281,7 @@ public:
   *) Update SQL-layer data-dictionary by installing .FRM file for the new version
      of the table.
   *) Inform the storage engine about this change by calling the
-     handler::ha_notify_table_changed() method.
+     hton::notify_table_changed()
   *) Destroy the Alter_inplace_info and handler_ctx objects.
 
  */
@@ -4334,16 +4346,6 @@ public:
  bool ha_commit_inplace_alter_table(TABLE *altered_table,
                                     Alter_inplace_info *ha_alter_info,
                                     bool commit);
-
-
- /**
-    Public function wrapping the actual handler call.
-    @see notify_table_changed()
- */
- void ha_notify_table_changed()
- {
-   notify_table_changed();
- }
 
 
 protected:
@@ -4443,14 +4445,6 @@ protected:
   ha_alter_info->group_commit_ctx= NULL;
   return false;
 }
-
-
- /**
-    Notify the storage engine that the table structure (.FRM) has been updated.
-
-    @note No errors are allowed during notify_table_changed().
- */
- virtual void notify_table_changed() { }
 
 public:
  /* End of On-line/in-place ALTER TABLE interface. */

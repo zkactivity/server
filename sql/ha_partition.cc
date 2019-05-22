@@ -72,7 +72,8 @@
 #define PAR_ENGINES_OFFSET 12
 #define PARTITION_ENABLED_TABLE_FLAGS (HA_FILE_BASED | \
                                        HA_REC_NOT_IN_SEQ | \
-                                       HA_CAN_REPAIR)
+                                       HA_CAN_REPAIR | \
+                                       HA_REUSES_FILE_NAMES)
 #define PARTITION_DISABLED_TABLE_FLAGS (HA_CAN_GEOMETRY | \
                                         HA_DUPLICATE_POS | \
                                         HA_CAN_INSERT_DELAYED | \
@@ -10199,19 +10200,6 @@ end:
   ha_alter_info->handler_ctx= part_inplace_ctx;
 
   DBUG_RETURN(error);
-}
-
-
-void ha_partition::notify_table_changed()
-{
-  handler **file;
-
-  DBUG_ENTER("ha_partition::notify_table_changed");
-
-  for (file= m_file; *file; file++)
-    (*file)->ha_notify_table_changed();
-
-  DBUG_VOID_RETURN;
 }
 
 
